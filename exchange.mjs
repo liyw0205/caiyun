@@ -4,11 +4,6 @@ import { pathToFileURL } from "node:url";
 
 const currentDir = process.cwd();
 
-/**
- * 自动查找当前目录下最新的 caiyun-*.mjs
- * 例如：
- * caiyun-1.1.3.mjs
- */
 const caiyunFiles = fs
   .readdirSync(currentDir)
   .filter(file => /^caiyun-.*\.mjs$/.test(file))
@@ -24,14 +19,6 @@ const caiyunPath = path.join(currentDir, caiyunFile);
 
 console.log(`当前使用主程序：${caiyunFile}`);
 
-/**
- * 商品 ID
- *
- * 优先读取任务变量：
- *   EXCHANGE_ID
- *
- * 如果没有设置，就使用默认值。
- */
 const exchangeId = Number(
   process.env.EXCHANGE_ID || "231228012"
 );
@@ -41,25 +28,40 @@ if (!Number.isFinite(exchangeId) || exchangeId <= 0) {
 }
 
 /**
- * 账号下标
+ * 推荐使用 ACCOUNT_NO：
+ *   ACCOUNT_NO=1 表示第 1 个账号
+ *   ACCOUNT_NO=2 表示第 2 个账号
  *
- * 原来你写的是：
- *   config[1]
- *
- * 这里支持任务变量：
- *   ACCOUNT_INDEX
- *
- * 默认仍然是 1。
+ * 为了兼容旧变量，也支持 ACCOUNT_INDEX：
+ *   ACCOUNT_INDEX=0 表示第 1 个账号
+ *   ACCOUNT_INDEX=1 表示第 2 个账号
  */
-const accountIndex = Number(
-  process.env.ACCOUNT_INDEX || "1"
-);
+let accountIndex = 0;
+let accountText = "";
 
-if (!Number.isInteger(accountIndex) || accountIndex < 0) {
-  throw new Error(`账号下标不合法：${process.env.ACCOUNT_INDEX}`);
+if (process.env.ACCOUNT_NO) {
+  const accountNo = Number(process.env.ACCOUNT_NO);
+
+  if (!Number.isInteger(accountNo) || accountNo <= 0) {
+    throw new Error(`账号序号不合法：ACCOUNT_NO=${process.env.ACCOUNT_NO}`);
+  }
+
+  accountIndex = accountNo - 1;
+  accountText = `ACCOUNT_NO=${accountNo}，对应 config[${accountIndex}]`;
+} else if (process.env.ACCOUNT_INDEX) {
+  accountIndex = Number(process.env.ACCOUNT_INDEX);
+
+  if (!Number.isInteger(accountIndex) || accountIndex < 0) {
+    throw new Error(`账号下标不合法：ACCOUNT_INDEX=${process.env.ACCOUNT_INDEX}`);
+  }
+
+  accountText = `ACCOUNT_INDEX=${accountIndex}，对应 config[${accountIndex}]`;
+} else {
+  accountIndex = 0;
+  accountText = `默认第 1 个账号，对应 config[0]`;
 }
 
-console.log(`兑换账号下标：config[${accountIndex}]`);
+console.log(`兑换账号：${accountText}`);
 console.log(`兑换商品 ID：${exchangeId}`);
 
 const mod = await import(pathToFileURL(caiyunPath).href);
